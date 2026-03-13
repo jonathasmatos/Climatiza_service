@@ -1,0 +1,34 @@
+# REGRAS DO PROJETO - ZELADORIA DIGITAL
+
+## 1. Idioma
+- **TODA** a comunicação, documentação e comentários devem ser feitos estritamente em **PORTUGUÊS (PT-BR)**.
+
+## 2. A LEI DO DEPLOY (The Law of Deployment)
+> [!CAUTION]
+> **MÉTODO ÚNICO E EXCLUSIVO DE DEPLOY**
+
+1.  **Proibição de Novos Scripts**: 
+    - É terminantemente **PROIBIDO** criar qualquer novo arquivo, script ou workflow de deploy. 
+    - Não tente "otimizar" criando alternativas. O ecossistema `tar_deploy.py` + `deploy.ps1` é a única via.
+
+2.  **Ambiente Local (`D:\Condominios`)**:
+    - É o único lugar onde edits são permitidos.
+    - Todas as alterações nascem e são validadas aqui.
+
+3.  **Servidor de Produção (`server-automacao`)**:
+    - É **INTOCÁVEL** manualmente.
+    - **PROIBIDO**: `ssh`, `nano`, `vim`, `docker compose up` manual no servidor.
+
+4.  **Processo de Deploy**:
+    - Único método autorizado: `powershell -File deploy.ps1`.
+    - Este script garante a atomicidade, limpeza de logs e manutenção de espaço.
+
+## 3. Documentação
+- Consulte sempre `docs/A_LEI_DO_DEPLOY.md` antes de qualquer operação de infraestrutura.
+
+## 4. Autonomia do Agente & Skills
+- O projeto conta com o ecossistema completo de habilidades em `.agent/skills` e workflows em `.agent/workflows`.
+- **AUTONOMIA TOTAL**: O agente tem permissão para decidir, carregar e aplicar qualquer habilidade ou fluxo de trabalho que julgar necessário para cumprir os objetivos da tarefa com excelência.
+- **USO PROATIVO**: Quando surgir uma tarefa envolvendo n8n, WhatsApp, Docker, PostgreSQL, segurança ou performance, o agente deve **obrigatoriamente** buscar diretrizes nas skills correspondentes antes de propor ou executar mudanças.
+- **MELHORIA CONTÍNUA**: O agente pode sugerir ou criar novas skills em `.agent/skills` se detectar padrões recorrentes ou necessidades específicas do projeto que ainda não estejam catalogadas.
+- Priorize sempre: Atomicidade, Segurança (A Lei do Deploy) e Código Limpo.

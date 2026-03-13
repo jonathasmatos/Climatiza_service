@@ -1,0 +1,124 @@
+# ═══════════════════════════════════════════════════════
+# Climatiza Service — Docker Compose (Produção)
+# Servidor: 192.168.3.13 | Dir: /opt/apps/os_microSas
+# Domínio: climatizaservice.topmarcas.site (Cloudflare)
+#
+# ⚠️  Zeladoria, Ticketz, n8n → NÃO TOCAR
+# ═══════════════════════════════════════════════════════
+
+services:
+
+  # ─── Banco de Dados ────────────────────────────────
+  climatiza-postgres:
+    image: postgres:16-alpine
+    container_name: climatiza-postgres
+    environment:
+      - POSTGRES_DB=climatiza
+      - POSTGRES_USER=climatiza
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-climatiza_prod_pass}
+      - TZ=America/Belem
+    volumes:
+      - climatiza-postgres-data:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - rede-interna
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U climatiza -d climatiza"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── Redis (Cache / Filas Futuras) ─────────────────
+  climatiza-redis:
+    image: redis:7-alpine
+    container_name: climatiza-redis
+    environment:
+      - TZ=America/Belem
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - rede-interna
+    restart: unless-stopped
+
+  # ─── Backend API (FastAPI) ─────────────────────────
+  climatiza-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: climatiza-backend
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://climatiza:climatiza_prod_pass@climatiza-postgres:5432/climatiza}
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-climatiza-jwt-secret-mude-em-producao}
+      - APP_ENV=production
+      - AUTH_ACCESS_EXPIRES=28800
+      - AUTH_REFRESH_EXPIRES=604800
+      - AUTH_REFRESH_ENABLED=1
+      - CORS_ORIGINS=https://climatizaservice.topmarcas.site
+      - REDIS_URL=redis://climatiza-redis:6379/0
+      - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-jonathasvirtual@gmail.com}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-JH232931}
+      - SEED_ADMIN_NAME=${SEED_ADMIN_NAME:-Jonathas}
+      # Integração Ticketz (pronto para usar)
+      - TICKETZ_API_URL=${TICKETZ_API_URL:-http://ticketz-backend:3000}
+      - TICKETZ_API_KEY=${TICKETZ_API_KEY:-}
+      # Integração n8n (pronto para usar)
+      - N8N_NOTIFICACAO_WEBHOOK_URL=${N8N_NOTIFICACAO_WEBHOOK_URL:-}
+      - INTERNAL_TOKEN=${INTERNAL_TOKEN:-climatiza_internal_2026}
+      - TZ=America/Belem
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    depends_on:
+      climatiza-postgres:
+        condition: service_healthy
+    networks:
+      - rede-interna
+      - ticketz-traefik_ticketz
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.climatiza-backend.rule=Host(`climatizaservice.topmarcas.site`)
+      - traefik.http.routers.climatiza-backend.entrypoints=web
+      - traefik.http.routers.climatiza-backend.priority=10
+      - traefik.http.services.climatiza-backend.loadbalancer.server.port=8000
+      - traefik.docker.network=ticketz-traefik_ticketz
+
+  # ─── Frontend (placeholder — quando for criado) ────
+  # climatiza-frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: climatiza-frontend
+  #   environment:
+  #     - TZ=America/Belem
+  #   volumes:
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - /etc/timezone:/etc/timezone:ro
+  #   networks:
+  #     - rede-interna
+  #     - ticketz-traefik_ticketz
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.routers.climatiza.rule=Host(`climatizaservice.topmarcas.site`)
+  #     - traefik.http.routers.climatiza.entrypoints=web
+  #     - traefik.http.routers.climatiza.priority=5
+  #     - traefik.http.services.climatiza.loadbalancer.server.port=80
+  #     - traefik.docker.network=ticketz-traefik_ticketz
+
+networks:
+  rede-interna:
+    external: true
+  ticketz-traefik_ticketz:
+    external: true
+
+volumes:
+  climatiza-postgres-data:
